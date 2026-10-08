@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api, downloadPdf, ESTADO_TURNO, horaCorta } from '../api/client';
-import { fechaConAnio } from '../utils/fecha';
+import { etiquetaSemana, lunesDe, nombreDiaCorto, sumarDias } from '../utils/fecha';
 import { esDiaHabil, hoyLocal, HORARIOS, HORARIOS_MANANA, HORARIOS_TARDE, proximoDiaHabil } from '../utils/agenda';
-import { Alert, Badge, Empty, Field, Modal } from '../components/ui';
+import { Alert, Badge, Field, Modal } from '../components/ui';
 import { BuscadorPaciente } from '../components/BuscadorPaciente';
 
 const emptyForm = {
@@ -14,24 +14,30 @@ const emptyForm = {
   estado: 'pendiente'
 };
 
+const DIAS = [0, 1, 2, 3, 4];
+
 export function Turnos() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pacientes, setPacientes] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
-  const [filtros, setFiltros] = useState({ desde: '', hasta: '', estado: '', id_usuario: '' });
+  const [lunes, setLunes] = useState(() => lunesDe(hoyLocal()));
+  const [estadoFiltro, setEstadoFiltro] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [editing, setEditing] = useState(null);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
 
+  const hoy = hoyLocal();
+  const viernes = sumarDias(lunes, 4);
+  const dias = DIAS.map((offset) => sumarDias(lunes, offset));
+
   async function load() {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      Object.entries(filtros).forEach(([k, v]) => { if (v) params.set(k, v); });
-      const qs = params.toString();
-      const data = await api(`/api/turnos${qs ? `?${qs}` : ''}`);
+      const params = new URLSearchParams({ desde: lunes, hasta: viernes });
+      if (estadoFiltro) params.set('estado', estadoFiltro);
+      const data = await api(`/api/turnos?${params}`);
       setItems(data.turnos || []);
     } finally {
       setLoading(false);
@@ -43,10 +49,22 @@ export function Turnos() {
     api('/api/auth/profesionales').then((d) => setUsuarios(d.usuarios));
   }, []);
 
-  useEffect(() => { load().catch((err) => setError(err.message)); }, [filtros]);
+  useEffect(() => { load().catch((err) => setError(err.message)); }, [lunes, estadoFiltro]);
+
+  const porCelda = useMemo(() => {
+    const mapa = new Map();
+    items.forEach((item) => {
+      const clave = `${String(item.fecha_turno).slice(0, 10)}|${horaCorta(item.hora_turno)}`;
+      const lista = mapa.get(clave) || [];
+      lista.push(item);
+      mapa.set(clave, lista);
+    });
+    return mapa;
+  }, [items]);
 
   function openNew() {
     setEditing(null);
+    setError('');
     setForm({
       ...emptyForm,
       id_usuario: usuarios[0]?.id_usuario || '',
@@ -55,12 +73,26 @@ export function Turnos() {
     setOpen(true);
   }
 
+  function openSlot(fecha, hora) {
+    if (fecha < hoy) return;
+    setEditing(null);
+    setError('');
+    setForm({
+      ...emptyForm,
+      id_usuario: usuarios[0]?.id_usuario || '',
+      fecha_turno: fecha,
+      hora_turno: hora
+    });
+    setOpen(true);
+  }
+
   function openEdit(item) {
     setEditing(item);
+    setError('');
     setForm({
       id_paciente: item.id_paciente,
       id_usuario: item.id_usuario,
-      fecha_turno: item.fecha_turno,
+      fecha_turno: String(item.fecha_turno).slice(0, 10),
       hora_turno: horaCorta(item.hora_turno),
       motivo: item.motivo || '',
       estado: item.estado
@@ -70,7 +102,7 @@ export function Turnos() {
 
   function fechaValida(fecha) {
     const original = editing ? String(editing.fecha_turno).slice(0, 10) : '';
-    if (fecha < hoyLocal() && fecha !== original) {
+    if (fecha < hoy && fecha !== original) {
       return 'No se pueden fijar turnos en una fecha anterior a hoy.';
     }
     if (!esDiaHabil(fecha)) return 'Los turnos son solo de lunes a viernes.';
@@ -124,7 +156,7 @@ export function Turnos() {
       });
       setItems((prev) => prev.flatMap((row) => {
         if (row.id_turno !== item.id_turno) return [row];
-        if (filtros.estado && filtros.estado !== estado) return [];
+        if (estadoFiltro && estadoFiltro !== estado) return [];
         return [{ ...row, estado }];
       }));
     } catch (err) {
@@ -135,80 +167,105 @@ export function Turnos() {
   async function remove(item) {
     if (!confirm('¿Dar de baja este turno?')) return;
     await api(`/api/turnos/${item.id_turno}`, { method: 'DELETE' });
+    setOpen(false);
     await load();
   }
 
   async function exportar() {
-    const params = new URLSearchParams();
-    Object.entries(filtros).forEach(([k, v]) => { if (v) params.set(k, v); });
-    const qs = params.toString();
-    await downloadPdf(`/api/turnos/pdf${qs ? `?${qs}` : ''}`, 'agenda-turnos.pdf');
+    const params = new URLSearchParams({ desde: lunes, hasta: viernes });
+    if (estadoFiltro) params.set('estado', estadoFiltro);
+    await downloadPdf(`/api/turnos/pdf?${params}`, 'agenda-turnos.pdf');
+  }
+
+  function filas(horas) {
+    return horas.flatMap((hora) => [
+      <div className="cal-time" key={`${hora}-hora`}>{hora}</div>,
+      ...dias.map((fecha) => {
+        const turnos = porCelda.get(`${fecha}|${hora}`) || [];
+        const pasado = fecha < hoy;
+        return (
+          <div
+            className={`cal-cell${fecha === hoy ? ' is-today' : ''}${pasado ? ' is-past' : ''}`}
+            key={`${fecha}-${hora}`}
+            onClick={() => openSlot(fecha, hora)}
+          >
+            {turnos.map((item) => (
+              <div
+                className={`cal-event estado-${item.estado}`}
+                key={item.id_turno}
+                role="button"
+                tabIndex={0}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openEdit(item);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.stopPropagation();
+                    openEdit(item);
+                  }
+                }}
+              >
+                <strong>{item.paciente_apellido}, {item.paciente_nombre}</strong>
+                <span>{item.profesional_nombre} {item.profesional_apellido}</span>
+                {item.motivo && <em>{item.motivo}</em>}
+                {pasado ? (
+                  <Badge value={item.estado} />
+                ) : (
+                  <select
+                    className="estado-select"
+                    aria-label={`Estado de ${item.paciente_apellido}, ${item.paciente_nombre}`}
+                    value={item.estado}
+                    onClick={(event) => event.stopPropagation()}
+                    onChange={(event) => cambiarEstado(item, event.target.value)}
+                  >
+                    {ESTADO_TURNO.map((estado) => <option key={estado} value={estado}>{estado}</option>)}
+                  </select>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      })
+    ]);
   }
 
   return (
     <>
-      {error && <Alert type="error">{error}</Alert>}
-      <div className="toolbar">
-        <Field label="Desde"><input type="date" value={filtros.desde} onChange={(e) => setFiltros({ ...filtros, desde: e.target.value })} /></Field>
-        <Field label="Hasta"><input type="date" value={filtros.hasta} onChange={(e) => setFiltros({ ...filtros, hasta: e.target.value })} /></Field>
+      {error && !open && <Alert type="error">{error}</Alert>}
+      <div className="cal-toolbar">
+        <div className="cal-nav">
+          <button className="btn btn-ghost" type="button" onClick={() => setLunes(lunesDe(hoy))}>Hoy</button>
+          <button className="btn btn-ghost" type="button" onClick={() => setLunes(sumarDias(lunes, -7))} aria-label="Semana anterior">‹</button>
+          <button className="btn btn-ghost" type="button" onClick={() => setLunes(sumarDias(lunes, 7))} aria-label="Semana siguiente">›</button>
+          <h2>{etiquetaSemana(lunes)}</h2>
+        </div>
         <Field label="Estado">
-          <select value={filtros.estado} onChange={(e) => setFiltros({ ...filtros, estado: e.target.value })}>
+          <select value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)}>
             <option value="">Todos</option>
-            {ESTADO_TURNO.map((e) => <option key={e}>{e}</option>)}
+            {ESTADO_TURNO.map((estado) => <option key={estado}>{estado}</option>)}
           </select>
         </Field>
         <button className="btn btn-primary" type="button" onClick={openNew}>Nuevo turno</button>
         <button className="btn btn-secondary" type="button" onClick={exportar}>Exportar agenda PDF</button>
       </div>
-      <div className="card">
-        {loading && <Empty>Cargando agenda…</Empty>}
-        {!loading && items.length === 0 && <Empty>No hay turnos para los filtros elegidos.</Empty>}
-        {!loading && items.length > 0 && (
-          <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Hora</th>
-                  <th>Paciente</th>
-                  <th>Profesional</th>
-                  <th>Motivo</th>
-                  <th>Estado</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id_turno}>
-                    <td className="meta">{fechaConAnio(item.fecha_turno)}</td>
-                    <td className="meta">{horaCorta(item.hora_turno)}</td>
-                    <td className="who">{item.paciente_apellido}, {item.paciente_nombre}</td>
-                    <td>{item.profesional_nombre} {item.profesional_apellido}</td>
-                    <td>{item.motivo || '—'}</td>
-                    <td>
-                      {String(item.fecha_turno).slice(0, 10) < hoyLocal() ? (
-                        <Badge value={item.estado} />
-                      ) : (
-                        <select
-                          className="estado-select"
-                          aria-label={`Estado de ${item.paciente_apellido}, ${item.paciente_nombre}`}
-                          value={item.estado}
-                          onChange={(e) => cambiarEstado(item, e.target.value)}
-                        >
-                          {ESTADO_TURNO.map((estado) => <option key={estado} value={estado}>{estado}</option>)}
-                        </select>
-                      )}
-                    </td>
-                    <td className="actions">
-                      <button className="btn btn-ghost" type="button" onClick={() => openEdit(item)}>Modificar</button>
-                      <button className="btn btn-danger" type="button" onClick={() => remove(item)}>Baja</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="card cal-card">
+        {loading && <p className="cal-loading">Cargando la semana…</p>}
+        {!loading && items.length === 0 && <p className="cal-loading">Esta semana no tiene turnos.</p>}
+        <div className="cal-scroll">
+          <div className="cal-grid">
+            <div className="cal-corner" />
+            {dias.map((fecha) => (
+              <div className={`cal-head${fecha === hoy ? ' is-today' : ''}`} key={fecha}>
+                <span>{nombreDiaCorto(fecha)}</span>
+                <strong>{Number(fecha.slice(8, 10))}</strong>
+              </div>
+            ))}
+            {filas(HORARIOS_MANANA)}
+            <div className="cal-break">Tarde · desde las 15:00</div>
+            {filas(HORARIOS_TARDE)}
           </div>
-        )}
+        </div>
       </div>
       {open && (
         <Modal title={editing ? 'Modificar turno' : 'Alta de turno'} onClose={() => setOpen(false)}>
@@ -231,7 +288,7 @@ export function Turnos() {
               <Field label="Fecha" hint="Desde hoy, de lunes a viernes.">
                 <input
                   type="date"
-                  min={editing && String(editing.fecha_turno).slice(0, 10) < hoyLocal() ? undefined : hoyLocal()}
+                  min={editing && String(editing.fecha_turno).slice(0, 10) < hoy ? undefined : hoy}
                   value={form.fecha_turno}
                   onChange={(e) => cambiarFecha(e.target.value)}
                   required
@@ -251,16 +308,21 @@ export function Turnos() {
             </div>
             {error && <Alert type="error">{error}</Alert>}
             <Field label="Motivo"><textarea value={form.motivo} onChange={(e) => setForm({ ...form, motivo: e.target.value })} /></Field>
-            <Field label="Estado" hint={String(form.fecha_turno).slice(0, 10) < hoyLocal() ? 'El estado de un turno anterior a hoy no se modifica.' : ''}>
+            <Field label="Estado" hint={String(form.fecha_turno).slice(0, 10) < hoy ? 'El estado de un turno anterior a hoy no se modifica.' : ''}>
               <select
                 value={form.estado}
-                disabled={String(form.fecha_turno).slice(0, 10) < hoyLocal()}
+                disabled={String(form.fecha_turno).slice(0, 10) < hoy}
                 onChange={(e) => setForm({ ...form, estado: e.target.value })}
               >
                 {ESTADO_TURNO.map((estado) => <option key={estado}>{estado}</option>)}
               </select>
             </Field>
-            <button className="btn btn-primary" type="submit">Guardar turno</button>
+            <div className="cal-form-actions">
+              {editing && (
+                <button className="btn btn-danger" type="button" onClick={() => remove(editing)}>Dar de baja</button>
+              )}
+              <button className="btn btn-primary" type="submit">Guardar turno</button>
+            </div>
           </form>
         </Modal>
       )}

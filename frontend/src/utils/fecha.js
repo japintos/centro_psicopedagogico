@@ -28,6 +28,42 @@ export function fechaConAnio(iso) {
   return `${p.dia} ${MESES[p.mes - 1]} ${p.anio}`;
 }
 
+export function sumarDias(iso, cantidad) {
+  const p = partes(iso);
+  if (!p) return iso;
+  const date = new Date(p.anio, p.mes - 1, p.dia);
+  date.setDate(date.getDate() + cantidad);
+  const mes = String(date.getMonth() + 1).padStart(2, '0');
+  const dia = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${mes}-${dia}`;
+}
+
+export function lunesDe(iso) {
+  const p = partes(iso);
+  if (!p) return iso;
+  const dia = new Date(p.anio, p.mes - 1, p.dia).getDay();
+  const delta = dia === 0 ? -6 : 1 - dia;
+  return sumarDias(iso, delta);
+}
+
+export function etiquetaSemana(lunesIso) {
+  const viernes = sumarDias(lunesIso, 4);
+  const a = partes(lunesIso);
+  const b = partes(viernes);
+  if (!a || !b) return '';
+  if (a.mes === b.mes && a.anio === b.anio) return `${a.dia}–${b.dia} ${MESES[a.mes - 1]} ${a.anio}`;
+  if (a.anio === b.anio) return `${a.dia} ${MESES[a.mes - 1]} – ${b.dia} ${MESES[b.mes - 1]} ${a.anio}`;
+  return `${a.dia} ${MESES[a.mes - 1]} ${a.anio} – ${b.dia} ${MESES[b.mes - 1]} ${b.anio}`;
+}
+
+const DIAS_CORTOS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+
+export function nombreDiaCorto(iso) {
+  const p = partes(iso);
+  if (!p) return '';
+  return DIAS_CORTOS[new Date(p.anio, p.mes - 1, p.dia).getDay()];
+}
+
 export function fechaLarga(fecha = new Date()) {
   const texto = new Intl.DateTimeFormat('es-AR', {
     weekday: 'long',

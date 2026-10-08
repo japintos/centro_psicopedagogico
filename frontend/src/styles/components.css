@@ -215,6 +215,146 @@ table.data tr:focus-within .actions { opacity: 1; }
   font-size: 0.88rem;
   text-transform: capitalize;
 }
+
+.cal-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+.cal-toolbar .field { margin: 0; min-width: 160px; }
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+}
+.cal-nav h2 {
+  margin: 0 0 0 8px;
+  font-size: 1.55rem;
+  text-transform: capitalize;
+}
+.cal-nav .btn { min-width: 40px; }
+.cal-card { padding: 0; overflow: hidden; }
+.cal-loading {
+  margin: 0;
+  padding: 12px 16px 0;
+  color: var(--texto-suave);
+  font-weight: 300;
+}
+.cal-scroll {
+  overflow: auto;
+  max-height: calc(100vh - 220px);
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: 72px repeat(5, minmax(132px, 1fr));
+  min-width: 760px;
+}
+.cal-corner, .cal-head, .cal-time, .cal-cell {
+  border-bottom: 1px solid #f0e8da;
+  border-right: 1px solid #f0e8da;
+}
+.cal-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--hoja);
+  text-align: center;
+  padding: 10px 6px 8px;
+}
+.cal-head span {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9a8d78;
+  font-weight: 700;
+}
+.cal-head strong {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  margin-top: 4px;
+  border-radius: 50%;
+  font-family: var(--serif);
+  font-size: 1.15rem;
+}
+.cal-head.is-today strong {
+  background: var(--ink);
+  color: var(--amarillo);
+}
+.cal-corner, .cal-time {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--hoja);
+}
+.cal-time {
+  padding: 6px 8px 0 0;
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--texto-suave);
+}
+.cal-cell {
+  min-height: 58px;
+  padding: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: pointer;
+  background: var(--hoja);
+}
+.cal-cell.is-today { background: rgba(126, 214, 165, 0.14); }
+.cal-cell.is-past { cursor: default; background: #f7f3ec; }
+.cal-cell.is-past.is-today { background: rgba(126, 214, 165, 0.08); }
+.cal-cell:hover { background: rgba(245, 196, 105, 0.16); }
+.cal-cell.is-past:hover { background: #f7f3ec; }
+.cal-break {
+  grid-column: 1 / -1;
+  padding: 8px 12px;
+  background: #f3ecdf;
+  color: #9a8d78;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  border-bottom: 1px solid var(--borde);
+}
+.cal-event {
+  border: 0;
+  border-left: 3px solid var(--azul);
+  border-radius: 8px;
+  padding: 4px 6px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.cal-event strong, .cal-event span, .cal-event em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cal-event strong { font-size: 0.82rem; color: var(--ink); }
+.cal-event span, .cal-event em { font-size: 0.75rem; font-style: normal; color: var(--texto-suave); font-weight: 400; }
+.cal-event .estado-select, .cal-event .badge { margin-top: 3px; align-self: flex-start; }
+.cal-event .estado-select { max-width: 100%; font-size: 0.75rem; padding: 2px 8px; background: transparent; }
+.cal-event.estado-pendiente { background: #fff6df; border-left-color: #e2b14a; }
+.cal-event.estado-confirmado { background: #e7f8ee; border-left-color: #3e9a68; }
+.cal-event.estado-cancelado { background: #fdeeee; border-left-color: #c45c5c; }
+.cal-event.estado-realizado { background: #eaf2fb; border-left-color: #4a90e2; }
+.cal-form-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+.cal-form-actions .btn-primary { margin-left: auto; }
 .badge-admin { background: #e7f0fb; color: #2b5c9a; }
 .badge-psico { background: #e5f8ee; color: var(--verde-tinta); }
 

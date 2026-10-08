@@ -143,20 +143,20 @@
       "titulo": "La turnera",
       "resumen": "Agenda de citas: alta, cambio, baja, profesional asignado y PDF de la agenda.",
       "bloques": [
-        { "tipo": "parrafo", "texto": "Turnera muestra los turnos ordenados por fecha y hora. Se puede acotar con Desde, Hasta y Estado. Los estados son pendiente, confirmado, cancelado y realizado." },
+        { "tipo": "parrafo", "texto": "Turnera muestra la semana de lunes a viernes, con las horas de la mañana y de la tarde. Hoy, la semana anterior y la siguiente mueven la grilla. El filtro de Estado acota lo que se ve. Los estados son pendiente, confirmado, cancelado y realizado." },
         { "tipo": "pasos", "titulo": "Dar un turno de alta", "items": [
-          "Pulsar Nuevo turno.",
+          "Pulsar un casillero libre de hoy o de un día siguiente, o usar Nuevo turno.",
           "Elegir paciente y profesional asignado.",
-          "Elegir un día de lunes a viernes, desde hoy en adelante, y un horario fijo cada 30 minutos: mañana de 8:00 a 11:30 o tarde de 15:00 a 20:00. El motivo ayuda a quien recibe.",
+          "La fecha y la hora del casillero ya vienen cargadas. Siguen siendo de lunes a viernes, desde hoy, cada 30 minutos: mañana de 8:00 a 11:30 o tarde de 15:00 a 20:00.",
           "Guardar turno."
         ]},
         { "tipo": "pasos", "titulo": "Cambiar o dar de baja", "items": [
-          "En la lista, el estado de un turno de hoy o de un día siguiente se cambia con el desplegable de esa fila, sin abrir el formulario.",
-          "Modificar abre el formulario para corregir paciente, profesional, fecha u hora. El estado de un turno anterior a hoy queda fijo.",
-          "Baja elimina el turno. No borra al paciente ni sus evaluaciones."
+          "En el bloque del turno, el estado de hoy o de un día siguiente se cambia con el desplegable, sin abrir el formulario.",
+          "Pulsar el bloque abre el formulario para corregir paciente, profesional, fecha u hora. El estado de un turno anterior a hoy queda fijo.",
+          "Dar de baja, dentro de ese formulario, elimina el turno. No borra al paciente ni sus evaluaciones."
         ]},
         { "tipo": "nota", "texto": "No se asignan turnos en una fecha anterior a hoy, ni sábados ni domingos, ni fuera de esas franjas. El estado de un turno ya pasado no se puede cambiar. Una misma persona no puede tener dos turnos en la misma fecha y hora." },
-        { "tipo": "parrafo", "texto": "Exportar agenda PDF descarga la lista que se está viendo, con los filtros aplicados. En el tablero, los turnos pendientes y confirmados de hoy en adelante aparecen como avisos del día." }
+        { "tipo": "parrafo", "texto": "Exportar agenda PDF descarga la semana que se está viendo, con el filtro de estado aplicado. En el tablero, los turnos pendientes y confirmados de hoy en adelante aparecen como avisos del día." }
       ]
     },
     {
